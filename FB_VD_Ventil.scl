@@ -1,0 +1,64 @@
+(*****************************************************************************************
+**                                                                                      **
+**  Copyright (c) 2019          Himmelt                                                 **
+**  All Rights Reserved         Himmelt@SoraWorld                                       **
+**  E-mail                      master@void-3.cn                                        **
+**                                                                                      **
+******************************************************************************************
+** Date      Version       Author       Decsription                                     **
+------------------------------------------------------------------------------------------
+19.08.08     0.0.1         Himmelt      Beta                                            **
+*****************************************************************************************)
+FUNCTION_BLOCK FB_VD_Ventil
+
+VAR_INPUT
+  KYPXXR : BOOL;
+  KYPXXV : BOOL;
+  delay  : TIME;
+END_VAR
+
+VAR_OUTPUT
+  BEaR : BOOL := false;
+  BEaV : BOOL := false;
+  BEbR : BOOL := false;
+  BEbV : BOOL := false;
+  BEcR : BOOL := false;
+  BEcV : BOOL := false;
+  BEdR : BOOL := false;
+  BEdV : BOOL := false;
+  BEeR : BOOL := false;
+  BEeV : BOOL := false;
+  BEfR : BOOL := false;
+  BEfV : BOOL := false;
+  BEgR : BOOL := false;
+  BEgV : BOOL := false;
+  BEhR : BOOL := false;
+  BEhV : BOOL := false;
+END_VAR
+
+
+VAR_TEMP
+END_VAR;
+
+IF KYPXXR AND NOT KYPXXV THEN
+  BEaR := true;BEaV := false;
+  BEbR := true;BEbV := false;
+  BEcR := true;BEcV := false;
+  BEdR := true;BEdV := false;
+  BEeR := true;BEeV := false;
+  BEfR := true;BEfV := false;
+  BEgR := true;BEgV := false;
+  BEhR := true;BEhV := false;
+ELSIF KYPXXV AND NOT KYPXXR THEN
+  BEaR := false;BEaV := true;
+  BEbR := false;BEbV := true;
+  BEcR := false;BEcV := true;
+  BEdR := false;BEdV := true;
+  BEeR := false;BEeV := true;
+  BEfR := false;BEfV := true;
+  BEgR := false;BEgV := true;
+  BEhR := false;BEhV := true;
+
+END_IF;
+
+END_FUNCTION_BLOCK
