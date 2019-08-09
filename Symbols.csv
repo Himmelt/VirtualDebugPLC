@@ -1,4 +1,5 @@
 Symbol,Address,Type,Comment
 TON,SFB 4,SFB 4,Generate an On Delay
-FB_VD_Ventil_8,FB 1400,FB 1400,Modul Virtual FB Ventil
-FB_VD_Ventil_4,FB 1401,FB 1401,Modul Virtual FB Ventil
+FB_VD_Ventil_8,FB 1400,FB 1400,Virtual Modul FB Ventil
+FB_VD_Ventil_4,FB 1401,FB 1401,Virtual Modul FB Ventil
+FB_VD_SEW_AMA_Bin,FB 1356,FB 1356,Virtual Modul FB SEW_AMA_Bin

@@ -5,12 +5,12 @@
 **  E-mail                      master@void-3.cn                                        **
 **                                                                                      **
 ******************************************************************************************
-** Date      Version       Author       Decsription                                     **
+** Date         Version       Author       Decsription                                  **
 ------------------------------------------------------------------------------------------
 ** 19.08.09     0.1.0         Himmelt      Beta                                         **
 ** 19.08.08     0.0.1         Himmelt      Alpha                                        **
 *****************************************************************************************)
-FUNCTION_BLOCK FB_VD_Ventil_4
+FUNCTION_BLOCK FB_VD_Ventil_8
 
 VAR_INPUT
   KYPXXR : BOOL;
@@ -34,6 +34,14 @@ VAR_OUTPUT
   BEcV : BOOL := false;
   BEdR : BOOL := false;
   BEdV : BOOL := false;
+  BEeR : BOOL := false;
+  BEeV : BOOL := false;
+  BEfR : BOOL := false;
+  BEfV : BOOL := false;
+  BEgR : BOOL := false;
+  BEgV : BOOL := false;
+  BEhR : BOOL := false;
+  BEhV : BOOL := false;
 END_VAR
 
 IF KYPXXR AND NOT KYPXXV THEN
@@ -52,11 +60,19 @@ IF tonKYPR.Q THEN
   BEbR := true; BEbV := false;
   BEcR := true; BEcV := false;
   BEdR := true; BEdV := false;
+  BEeR := true; BEeV := false;
+  BEfR := true; BEfV := false;
+  BEgR := true; BEgV := false;
+  BEhR := true; BEhV := false;
 ELSIF tonKYPV.Q THEN
   BEaR := false; BEaV := true;
   BEbR := false; BEbV := true;
   BEcR := false; BEcV := true;
   BEdR := false; BEdV := true;
+  BEeR := false; BEeV := true;
+  BEfR := false; BEfV := true;
+  BEgR := false; BEgV := true;
+  BEhR := false; BEhV := true;
 END_IF;
 
 END_FUNCTION_BLOCK
