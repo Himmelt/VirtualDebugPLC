@@ -7,18 +7,20 @@
 ******************************************************************************************
 ** Date         Version       Author       Decsription                                  **
 ------------------------------------------------------------------------------------------
+** 19.08.13     0.3           Himmelt      Alpha; Add K100 & K100K                      **
 ** 19.08.13     0.2           Himmelt      Alpha; Add AMA address test                  **
-** 19.08.10     0.1           Himmelt      Alpha                                        **
+** 19.08.10     0.1           Himmelt      Alpha;                                       **
 *****************************************************************************************)
 FUNCTION_BLOCK FB_VD_SEW_AMA_Bin
 
 TITLE = 'VD_SEW_AMA_Bin'
-VERSION: '0.2'
+VERSION: '0.3'
 AUTHOR: Himmelt
 NAME: VD_AMA
 FAMILY: VDEBUG
 
 VAR_INPUT
+    K100    : BOOL := false;
     AMA_Adr : INT  := 0;
     Pos_1   : DINT := 0;
     Pos_2   : DINT := 0;
@@ -73,6 +75,7 @@ VAR
 END_VAR
 
 VAR_OUTPUT
+    K100K  : BOOL := false;
     BE_Ref : BOOL := false;
     BG_1   : BOOL := false;
     BG_2   : BOOL := false;
@@ -85,7 +88,7 @@ END_VAR
 (* --------------------------- Read AMA_A start --------------------------- *)
 start := A[AMA_Adr + 0, 0];// A0.0
 
-IF start THEN
+IF K100 & start THEN
     (* --------------------------- Read AMA_A --------------------------- *)
     fastMode   := A[AMA_Adr + 1, 7];// A1.7
     jogCW      := A[AMA_Adr + 0, 1];// A0.1
@@ -130,6 +133,7 @@ IF start THEN
     END_IF;
 END_IF;
 
+K100K := K100;
 BE_Ref := actualPos > -offset & actualPos < offset;
 BG_1 := actualPos >= Pos_1 - offset & actualPos <= Pos_1 + offset;
 BG_2 := actualPos >= Pos_2 - offset & actualPos <= Pos_2 + offset;
