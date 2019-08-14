@@ -7,6 +7,7 @@
 ******************************************************************************************
 ** Date         Version       Author       Decsription                                  **
 ------------------------------------------------------------------------------------------
+** 19.08.13     0.4           Himmelt      Beta ; Add all signals                       **
 ** 19.08.13     0.3           Himmelt      Alpha; Add K100 & K100K                      **
 ** 19.08.13     0.2           Himmelt      Alpha; Add AMA address test                  **
 ** 19.08.10     0.1           Himmelt      Alpha;                                       **
@@ -14,21 +15,21 @@
 FUNCTION_BLOCK FB_VD_SEW_AMA_Bin
 
 TITLE = 'VD_SEW_AMA_Bin'
-VERSION: '0.3'
+VERSION: '0.4'
 AUTHOR: Himmelt
 NAME: VD_AMA
 FAMILY: VDEBUG
 
 VAR_INPUT
+    Addr    : INT  := 0;
     K100    : BOOL := false;
-    AMA_Adr : INT  := 0;
     Pos_1   : DINT := 0;
     Pos_2   : DINT := 0;
     Pos_3   : DINT := 0;
     Pos_4   : DINT := 0;
-    Pos_5   : DINT := 0;
-    speed   : DINT := 0;
-    slowFac : INT  := 0;
+    jog     : INT  := 0;
+    slow    : INT  := 0;
+    speed   : INT := 0;
     offset  : DINT := 0;
     Limit_L : DINT := 0;
     Limit_R : DINT := 0;
@@ -36,142 +37,174 @@ END_VAR
 
 VAR_TEMP
     // AMA_A
-    fastMode   : BOOL;// A1.7
-    start      : BOOL;// A0.0
-    jogCW      : BOOL;// A0.1
-    jogCCW     : BOOL;// A0.2
-    mode_0     : BOOL;// A0.3
-    mode_1     : BOOL;// A0.4
-    mode_2     : BOOL;// A0.5
-    targetPos1 : BOOL;// A3.0
-    targetPos2 : BOOL;// A3.1
-    targetPos3 : BOOL;// A3.2
-    targetPos4 : BOOL;// A3.3
-    targetPos5 : BOOL;// A3.4
+    inhibit    : BOOL;// A1.0 controller inhibit/enable
+    notEStop   : BOOL;// A1.1 enable/rapid stop
+    notStop    : BOOL;// A1.2 enable/stop
+    reserve1   : BOOL;// A1.3 reserved
+    rampScaling: BOOL;// A1.4 ramp scaling
+    reserve2   : BOOL;// A1.5 reserved
+    reset      : BOOL;// A1.6 reset
+    fastMode   : BOOL;// A1.7 fast fast/slow fast
+    
+    start      : BOOL;// A0.0 start
+    jogCW      : BOOL;// A0.1 jog cw
+    jogCCW     : BOOL;// A0.2 jog ccw
+    mode_0     : BOOL;// A0.3 mode 2^0
+    mode_1     : BOOL;// A0.4 mode 2^1
+    mode_2     : BOOL;// A0.5 mode 2^2
+    synchronize: BOOL;// A0.6 synchronize offset
+    softLimit  : BOOL;// A0.7 software limit switch off
+
+    targetPos1 : BOOL;// A3.0 single bit position 1
+    targetPos2 : BOOL;// A3.1 single bit position 2
+    targetPos3 : BOOL;// A3.2 single bit position 3
+    targetPos4 : BOOL;// A3.3 single bit position 4
 
     // AMA_E
-    IPOS_Ref   : BOOL;// E1.2
-    inPosition : BOOL;// E1.3
-    breakRelea : BOOL;// E1.4
+    axisSync   : BOOL;// E1.0 axis synchronous/axis turns
+    invReady   : BOOL;// E1.1 inverter ready
+    IPOS_Ref   : BOOL;// E1.2 IPOS referenced
+    inPosition : BOOL;// E1.3 in position/axis standstill
+    notBreak   : BOOL;// E1.4 break released
+    fault      : BOOL;// E1.5 inverter fault/warning
+    limitCW    : BOOL;// E1.6 limit switch cw
+    limitCCW   : BOOL;// E1.7 limit switch ccw
+    invStatus  : BYTE;// EB0  inverter status/fault(bit 0-8)
 
-    signalPos1 : BOOL;// E7.0
-    signalPos2 : BOOL;// E7.1
-    signalPos3 : BOOL;// E7.2
-    signalPos4 : BOOL;// E7.3
-    signalPos5 : BOOL;// E7.4
-    signalCam1 : BOOL;// E9.0
-    signalCam2 : BOOL;// E9.1
-    signalCam3 : BOOL;// E9.2
-    signalCam4 : BOOL;// E9.3
-    signalCam5 : BOOL;// E9.4
+    signalPos1 : BOOL;// E7.0 single bit position 1
+    signalPos2 : BOOL;// E7.1 single bit position 2
+    signalPos3 : BOOL;// E7.2 single bit position 3
+    signalPos4 : BOOL;// E7.3 single bit position 4
+
+    signalCam1 : BOOL;// E9.0 single bit cam 1
+    signalCam2 : BOOL;// E9.1 single bit cam 2
+    signalCam3 : BOOL;// E9.2 single bit cam 3
+    signalCam4 : BOOL;// E9.3 single bit cam 4
 END_VAR
 
 VAR
-    forward : BOOL := false;
-    backward : BOOL := false;
-    target : DINT := 0;
+    temp      : INT := 0;
+    targetPos : DINT := 0;
     actualPos : DINT := 0;
     _actualPos AT actualPos : DWORD;
 END_VAR
 
 VAR_OUTPUT
     K100K  : BOOL := false;
+    nK100K : BOOL := false;
     BE_Ref : BOOL := false;
     BG_1   : BOOL := false;
     BG_2   : BOOL := false;
     BG_3   : BOOL := false;
     BG_4   : BOOL := false;
-    BG_5   : BOOL := false;
-    actualValue  : DINT := 0;
+    value  : DINT := 0;
 END_VAR
 
-(* --------------------------- Read AMA_A start --------------------------- *)
-start := A[AMA_Adr + 0, 0];// A0.0
+(* --------------------------- BEGIN --------------------------- *)
+temp     := temp + 1;
+inhibit  := A[Addr + 1, 0];// A1.0
+notEStop := A[Addr + 1, 1];// A1.1
+notStop  := A[Addr + 1, 2];// A1.2
 
-IF K100 & start THEN
-    (* --------------------------- Read AMA_A --------------------------- *)
-    fastMode   := A[AMA_Adr + 1, 7];// A1.7
-    jogCW      := A[AMA_Adr + 0, 1];// A0.1
-    jogCCW     := A[AMA_Adr + 0, 2];// A0.2
-    mode_0     := A[AMA_Adr + 0, 3];// A0.3
-    mode_1     := A[AMA_Adr + 0, 4];// A0.4
-    mode_2     := A[AMA_Adr + 0, 5];// A0.5
-    targetPos1 := A[AMA_Adr + 3, 0];// A3.0
-    targetPos2 := A[AMA_Adr + 3, 1];// A3.1
-    targetPos3 := A[AMA_Adr + 3, 2];// A3.2
-    targetPos4 := A[AMA_Adr + 3, 3];// A3.3
-    targetPos5 := A[AMA_Adr + 3, 4];// A3.4
+IF K100 & NOT inhibit & notEStop & notStop & temp = 20 THEN
+    fastMode   := A[Addr + 1, 7];// A1.7
+    start      := A[Addr + 0, 0];// A0.0
+    jogCW      := A[Addr + 0, 1];// A0.1
+    jogCCW     := A[Addr + 0, 2];// A0.2
+    mode_0     := A[Addr + 0, 3];// A0.3
+    mode_1     := A[Addr + 0, 4];// A0.4
+    mode_2     := A[Addr + 0, 5];// A0.5
+    targetPos1 := A[Addr + 3, 0];// A3.0
+    targetPos2 := A[Addr + 3, 1];// A3.1
+    targetPos3 := A[Addr + 3, 2];// A3.2
+    targetPos4 := A[Addr + 3, 3];// A3.3
 
     IF NOT fastMode THEN
-        speed := speed * slowFac / 100 ;
+        speed := slow;
+    END_IF;
+    
+    IF targetPos1 THEN
+        targetPos := Pos_1;
+    ELSIF targetPos2 THEN
+        targetPos := Pos_2;
+    ELSIF targetPos3 THEN
+        targetPos := Pos_3;
+    ELSIF targetPos4 THEN
+        targetPos := Pos_4;
+    ELSE
+        targetPos := 5 * Limit_L;
     END_IF;
 
-    IF NOT mode_0 & mode_1 & NOT mode_2 THEN
-        IF targetPos1 THEN
-            target := Pos_1;
-        ELSIF targetPos2 THEN
-            target := Pos_2;
-        ELSIF targetPos3 THEN
-            target := Pos_3;
-        ELSIF targetPos4 THEN
-            target := Pos_4;
-        ELSIF targetPos5 THEN;
-            target := Pos_5;
-        ELSE
-            target := Limit_L;
-        END_IF;
-
+    IF start & NOT mode_0 & mode_1 & NOT mode_2 THEN
         IF actualPos > Limit_L & actualPos < Limit_R THEN
-            IF actualPos - target > speed THEN
+            IF actualPos - targetPos > speed THEN
                 actualPos := actualPos - speed;
-            ELSIF target - actualPos > speed THEN
+            ELSIF targetPos - actualPos > speed THEN
                 actualPos := actualPos + speed;
             ELSE
-                actualPos := target;
+                actualPos := targetPos;
             END_IF;
         END_IF;
+        inPosition := actualPos = targetPos;
+    ELSE
+        IF jogCW THEN
+          actualPos := actualPos + jog;
+        ELSIF jogCCW THEN
+          actualPos := actualPos - jog;
+        END_IF;
+        inPosition := false;
     END_IF;
 END_IF;
 
-K100K := K100;
+(* --------------------------- FINISH --------------------------- *)
+IF temp >= 20 THEN
+    temp := 0;
+END_IF;
+
+K100K  := K100;
+nK100K := NOT K100;
 BE_Ref := actualPos > -offset & actualPos < offset;
-BG_1 := actualPos >= Pos_1 - offset & actualPos <= Pos_1 + offset;
-BG_2 := actualPos >= Pos_2 - offset & actualPos <= Pos_2 + offset;
-BG_3 := actualPos >= Pos_3 - offset & actualPos <= Pos_3 + offset;
-BG_4 := actualPos >= Pos_4 - offset & actualPos <= Pos_4 + offset;
-BG_5 := actualPos >= Pos_5 - offset & actualPos <= Pos_5 + offset;
+BG_1   := actualPos >= Pos_1 - offset & actualPos <= Pos_1 + offset;
+BG_2   := actualPos >= Pos_2 - offset & actualPos <= Pos_2 + offset;
+BG_3   := actualPos >= Pos_3 - offset & actualPos <= Pos_3 + offset;
+BG_4   := actualPos >= Pos_4 - offset & actualPos <= Pos_4 + offset;
+value  := actualPos;
 
-actualValue := actualPos;
-
+axisSync   := false;
+invReady   := K100;
 IPOS_Ref   := true;
-inPosition := actualPos = Pos_1 OR actualPos = Pos_2 OR actualPos = Pos_3 OR actualPos = Pos_4 OR actualPos = Pos_5;
-breakRelea := start;
-signalPos1 := actualPos = Pos_1;
-signalPos2 := actualPos = Pos_2;
-signalPos3 := actualPos = Pos_3;
-signalPos4 := actualPos = Pos_4;
-signalPos5 := actualPos = Pos_5;
+notBreak   := start;
+fault      := false;
+limitCW    := actualPos >= Limit_R;
+limitCCW   := actualPos <= Limit_L;
+signalPos1 := actualPos = Pos_1 & targetPos1;
+signalPos2 := actualPos = Pos_2 & targetPos2;
+signalPos3 := actualPos = Pos_3 & targetPos3;
+signalPos4 := actualPos = Pos_4 & targetPos4;
 signalCam1 := false;
 signalCam2 := false;
 signalCam3 := false;
 signalCam4 := false;
-signalCam5 := false;
 
 (* --------------------------- Write AMA_E --------------------------- *)
-E[AMA_Adr + 1, 1] := true      ;// E1.1
-E[AMA_Adr + 1, 2] := IPOS_Ref  ;// E1.2
-E[AMA_Adr + 1, 3] := inPosition;// E1.3
-E[AMA_Adr + 1, 4] := breakRelea;// E1.4
-ED[AMA_Adr + 2]   := _actualPos;// EDW2
-E[AMA_Adr + 7, 0] := signalPos1;// E7.0
-E[AMA_Adr + 7, 1] := signalPos2;// E7.1
-E[AMA_Adr + 7, 2] := signalPos3;// E7.2
-E[AMA_Adr + 7, 3] := signalPos4;// E7.3
-E[AMA_Adr + 7, 4] := signalPos5;// E7.4
-E[AMA_Adr + 9, 0] := signalCam1;// E9.0
-E[AMA_Adr + 9, 1] := signalCam2;// E9.1
-E[AMA_Adr + 9, 2] := signalCam3;// E9.2
-E[AMA_Adr + 9, 3] := signalCam4;// E9.3
-E[AMA_Adr + 9, 4] := signalCam5;// E9.4
+E[Addr + 1, 0] := axisSync  ;// E1.0
+E[Addr + 1, 1] := invReady  ;// E1.1
+E[Addr + 1, 2] := IPOS_Ref  ;// E1.2
+E[Addr + 1, 3] := inPosition;// E1.3
+E[Addr + 1, 4] := notBreak  ;// E1.4
+E[Addr + 1, 5] := fault     ;// E1.5
+E[Addr + 1, 6] := limitCW   ;// E1.6
+E[Addr + 1, 7] := limitCCW  ;// E1.7
+
+ED[Addr + 2]   := _actualPos;// ED2
+
+E[Addr + 7, 0] := signalPos1;// E7.0
+E[Addr + 7, 1] := signalPos2;// E7.1
+E[Addr + 7, 2] := signalPos3;// E7.2
+E[Addr + 7, 3] := signalPos4;// E7.3
+E[Addr + 9, 0] := signalCam1;// E9.0
+E[Addr + 9, 1] := signalCam2;// E9.1
+E[Addr + 9, 2] := signalCam3;// E9.2
+E[Addr + 9, 3] := signalCam4;// E9.3
 
 END_FUNCTION_BLOCK
