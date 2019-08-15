@@ -7,15 +7,17 @@
 ******************************************************************************************
 ** Date         Version       Author       Decsription                                  **
 ------------------------------------------------------------------------------------------
-** 19.08.13     0.4           Himmelt      Beta ; Add all signals                       **
-** 19.08.13     0.3           Himmelt      Alpha; Add K100 & K100K                      **
-** 19.08.13     0.2           Himmelt      Alpha; Add AMA address test                  **
+** 19.08.15     0.5           Himmelt      Beta ; fix mode signals                      **
+                                           change speed/position to real number         **
+** 19.08.13     0.4           Himmelt      Beta ; add all signals                       **
+** 19.08.13     0.3           Himmelt      Alpha; add K100 & K100K                      **
+** 19.08.13     0.2           Himmelt      Alpha; add AMA address test                  **
 ** 19.08.10     0.1           Himmelt      Alpha;                                       **
 *****************************************************************************************)
 FUNCTION_BLOCK FB_VD_SEW_AMA_Bin
 
 TITLE = 'VD_SEW_AMA_Bin'
-VERSION: '0.4'
+VERSION: '0.5'
 AUTHOR: Himmelt
 NAME: VD_AMA
 FAMILY: VDEBUG
@@ -27,9 +29,7 @@ VAR_INPUT
     Pos_2   : DINT := 0;
     Pos_3   : DINT := 0;
     Pos_4   : DINT := 0;
-    jog     : INT  := 0;
-    slow    : INT  := 0;
-    speed   : INT := 0;
+    speed   : INT  := 0;
     offset  : DINT := 0;
     Limit_L : DINT := 0;
     Limit_R : DINT := 0;
@@ -80,13 +80,17 @@ VAR_TEMP
     signalCam2 : BOOL;// E9.1 single bit cam 2
     signalCam3 : BOOL;// E9.2 single bit cam 3
     signalCam4 : BOOL;// E9.3 single bit cam 4
+    
+    posMode   : BOOL;
+    jogMode   : BOOL;
+    techMode  : BOOL;
+    refMode   : BOOL;
+    targetPos : REAL;
+    _speed    : REAL;
 END_VAR
 
 VAR
-    temp      : INT := 0;
-    targetPos : DINT := 0;
-    actualPos : DINT := 0;
-    _actualPos AT actualPos : DWORD;
+    actualPos : REAL := 0;
 END_VAR
 
 VAR_OUTPUT
@@ -98,15 +102,18 @@ VAR_OUTPUT
     BG_3   : BOOL := false;
     BG_4   : BOOL := false;
     value  : DINT := 0;
+    _actualPos AT value : DWORD;
 END_VAR
 
 (* --------------------------- BEGIN --------------------------- *)
-temp     := temp + 1;
+
 inhibit  := A[Addr + 1, 0];// A1.0
 notEStop := A[Addr + 1, 1];// A1.1
 notStop  := A[Addr + 1, 2];// A1.2
 
-IF K100 & NOT inhibit & notEStop & notStop & temp = 20 THEN
+_speed := speed / 50.0;
+
+IF K100 & NOT inhibit & notEStop & notStop THEN
     fastMode   := A[Addr + 1, 7];// A1.7
     start      := A[Addr + 0, 0];// A0.0
     jogCW      := A[Addr + 0, 1];// A0.1
@@ -118,48 +125,50 @@ IF K100 & NOT inhibit & notEStop & notStop & temp = 20 THEN
     targetPos2 := A[Addr + 3, 1];// A3.1
     targetPos3 := A[Addr + 3, 2];// A3.2
     targetPos4 := A[Addr + 3, 3];// A3.3
-
-    IF NOT fastMode THEN
-        speed := slow;
-    END_IF;
     
-    IF targetPos1 THEN
-        targetPos := Pos_1;
-    ELSIF targetPos2 THEN
-        targetPos := Pos_2;
-    ELSIF targetPos3 THEN
-        targetPos := Pos_3;
-    ELSIF targetPos4 THEN
-        targetPos := Pos_4;
-    ELSE
-        targetPos := 5 * Limit_L;
-    END_IF;
+    posMode := NOT mode_0 &     mode_1 & NOT mode_2;
+    jogMode := NOT mode_0 & NOT mode_1 & NOT mode_2;
+    techMode:=     mode_0 & NOT mode_1 &     mode_2;
+    refMode :=     mode_0 & NOT mode_1 & NOT mode_2;
 
-    IF start & NOT mode_0 & mode_1 & NOT mode_2 THEN
-        IF actualPos > Limit_L & actualPos < Limit_R THEN
-            IF actualPos - targetPos > speed THEN
-                actualPos := actualPos - speed;
-            ELSIF targetPos - actualPos > speed THEN
-                actualPos := actualPos + speed;
+    IF start & posMode THEN
+        IF NOT fastMode THEN
+            _speed := _speed * 0.1;
+        END_IF;
+        IF targetPos1 THEN
+            targetPos := Pos_1;
+        ELSIF targetPos2 THEN
+            targetPos := Pos_2;
+        ELSIF targetPos3 THEN
+            targetPos := Pos_3;
+        ELSIF targetPos4 THEN
+            targetPos := Pos_4;
+        ELSE
+            targetPos := 5 * Limit_L;
+        END_IF;
+        IF actualPos > Limit_L & actualPos < Limit_R & actualPos <> targetPos THEN
+            IF actualPos - targetPos > _speed THEN
+                actualPos := actualPos - _speed;
+            ELSIF targetPos - actualPos > _speed THEN
+                actualPos := actualPos + _speed;
             ELSE
                 actualPos := targetPos;
             END_IF;
+            axisSync := true;
         END_IF;
-        inPosition := actualPos = targetPos;
-    ELSE
+    ELSIF jogMode THEN
+        _speed := _speed * 0.01;
         IF jogCW THEN
-          actualPos := actualPos + jog;
+          actualPos := actualPos + _speed;
+          axisSync  := true;
         ELSIF jogCCW THEN
-          actualPos := actualPos - jog;
+          actualPos := actualPos - _speed;
+          axisSync := true;
         END_IF;
-        inPosition := false;
     END_IF;
 END_IF;
 
 (* --------------------------- FINISH --------------------------- *)
-IF temp >= 20 THEN
-    temp := 0;
-END_IF;
 
 K100K  := K100;
 nK100K := NOT K100;
@@ -168,23 +177,25 @@ BG_1   := actualPos >= Pos_1 - offset & actualPos <= Pos_1 + offset;
 BG_2   := actualPos >= Pos_2 - offset & actualPos <= Pos_2 + offset;
 BG_3   := actualPos >= Pos_3 - offset & actualPos <= Pos_3 + offset;
 BG_4   := actualPos >= Pos_4 - offset & actualPos <= Pos_4 + offset;
-value  := actualPos;
 
-axisSync   := false;
+value  := REAL_TO_DINT(actualPos);
+
 invReady   := K100;
 IPOS_Ref   := true;
 notBreak   := start;
 fault      := false;
-limitCW    := actualPos >= Limit_R;
-limitCCW   := actualPos <= Limit_L;
-signalPos1 := actualPos = Pos_1 & targetPos1;
-signalPos2 := actualPos = Pos_2 & targetPos2;
-signalPos3 := actualPos = Pos_3 & targetPos3;
-signalPos4 := actualPos = Pos_4 & targetPos4;
+limitCW    := value >= Limit_R;
+limitCCW   := value <= Limit_L;
+signalPos1 := value = Pos_1 & (start & posMode & targetPos1 OR NOT start);
+signalPos2 := value = Pos_2 & (start & posMode & targetPos2 OR NOT start);
+signalPos3 := value = Pos_3 & (start & posMode & targetPos3 OR NOT start);
+signalPos4 := value = Pos_4 & (start & posMode & targetPos4 OR NOT start);
 signalCam1 := false;
 signalCam2 := false;
 signalCam3 := false;
 signalCam4 := false;
+
+inPosition := signalPos1 OR signalPos2 OR signalPos3 OR signalPos4;
 
 (* --------------------------- Write AMA_E --------------------------- *)
 E[Addr + 1, 0] := axisSync  ;// E1.0
