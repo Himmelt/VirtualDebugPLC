@@ -1,0 +1,128 @@
+(*****************************************************************************************
+**                                                                                      **
+**  Copyright (c) 2019          Himmelt                                                 **
+**  All Rights Reserved         Himmelt@SoraWorld                                       **
+**  E-mail                      master@void-3.cn                                        **
+**                                                                                      **
+******************************************************************************************
+** Date         Version       Author       Decsription                                  **
+------------------------------------------------------------------------------------------
+** 2019.10.14   0.3           Himmelt      Add KYPxxBER and BD01E;                      **
+**                                         Change name to FB_VD_Ventil_5                **
+** 2019.10.12   0.2           Himmelt      Change Valve to Ventil                       **
+** 2019.08.09   0.1           Himmelt      Beta                                         **
+** 2019.08.08   0.0           Himmelt      Alpha                                        **
+*****************************************************************************************)
+FUNCTION_BLOCK FB_VD_Ventil_5
+
+VAR_INPUT
+  Addr   : INT  := 0;
+  K100   : BOOL := FALSE;
+  KYPX1R : BOOL := FALSE;
+  KYPX1V : BOOL := FALSE;
+  KYPX2R : BOOL := FALSE;
+  KYPX2V : BOOL := FALSE;
+  KYPX3R : BOOL := FALSE;
+  KYPX3V : BOOL := FALSE;
+  KYPX4R : BOOL := FALSE;
+  KYPX4V : BOOL := FALSE;
+  KYPX5R : BOOL := FALSE;
+  KYPX5V : BOOL := FALSE;
+  Delay  : TIME := T#500MS;
+END_VAR
+
+VAR
+  tmpKYPR : ARRAY [1..5] OF BOOL;
+  tmpKYPV : ARRAY [1..5] OF BOOL;
+  tonKYPX1R : TON;
+  tonKYPX1V : TON;
+  tonKYPX2R : TON;
+  tonKYPX2V : TON;
+  tonKYPX3R : TON;
+  tonKYPX3V : TON;
+  tonKYPX4R : TON;
+  tonKYPX4V : TON;
+  tonKYPX5R : TON;
+  tonKYPX5V : TON;
+END_VAR
+
+VAR_OUTPUT
+  BEX1R : BOOL := false;
+  BEX1V : BOOL := false;
+  BEX2R : BOOL := false;
+  BEX2V : BOOL := false;
+  BEX3R : BOOL := false;
+  BEX3V : BOOL := false;
+  BEX4R : BOOL := false;
+  BEX4V : BOOL := false;
+  BEX5R : BOOL := false;
+  BEX5V : BOOL := false;
+END_VAR
+
+IF KYPX1R AND NOT KYPX1V THEN
+  tmpKYPR[1] := true;tmpKYPV[1] := false;BEX1V := false;
+ELSIF NOT KYPX1R AND KYPX1V THEN
+  tmpKYPR[1] := false;tmpKYPV[1] := true;BEX1R := false;
+END_IF;
+IF KYPX2R AND NOT KYPX2V THEN
+  tmpKYPR[2] := true;tmpKYPV[2] := false;BEX2V := false;
+ELSIF NOT KYPX2R AND KYPX2V THEN
+  tmpKYPR[2] := false;tmpKYPV[2] := true;BEX2R := false;
+END_IF;
+IF KYPX3R AND NOT KYPX3V THEN
+  tmpKYPR[3] := true;tmpKYPV[3] := false;BEX3V := false;
+ELSIF NOT KYPX3R AND KYPX3V THEN
+  tmpKYPR[3] := false;tmpKYPV[3] := true;BEX3R := false;
+END_IF;
+IF KYPX4R AND NOT KYPX4V THEN
+  tmpKYPR[4] := true;tmpKYPV[4] := false;BEX4V := false;
+ELSIF NOT KYPX4R AND KYPX4V THEN
+  tmpKYPR[4] := false;tmpKYPV[4] := true;BEX4R := false;
+END_IF;
+IF KYPX5R AND NOT KYPX5V THEN
+  tmpKYPR[5] := true;tmpKYPV[5] := false;BEX5V := false;
+ELSIF NOT KYPX5R AND KYPX5V THEN
+  tmpKYPR[5] := false;tmpKYPV[5] := true;BEX5R := false;
+END_IF;
+
+tonKYPX1R(IN := tmpKYPR[1], PT := Delay);
+tonKYPX1V(IN := tmpKYPV[1], PT := Delay);
+tonKYPX2R(IN := tmpKYPR[2], PT := Delay);
+tonKYPX2V(IN := tmpKYPV[2], PT := Delay);
+tonKYPX3R(IN := tmpKYPR[3], PT := Delay);
+tonKYPX3V(IN := tmpKYPV[3], PT := Delay);
+tonKYPX4R(IN := tmpKYPR[4], PT := Delay);
+tonKYPX4V(IN := tmpKYPV[4], PT := Delay);
+tonKYPX5R(IN := tmpKYPR[5], PT := Delay);
+tonKYPX5V(IN := tmpKYPV[5], PT := Delay);
+
+IF tonKYPX1R.Q THEN
+    BEX1R := true;
+ELSIF tonKYPX1V.Q THEN
+    BEX1V := true;
+END_IF;
+IF tonKYPX2R.Q THEN
+    BEX2R := true;
+ELSIF tonKYPX1V.Q THEN
+    BEX2V := true;
+END_IF;
+IF tonKYPX3R.Q THEN
+    BEX3R := true;
+ELSIF tonKYPX3V.Q THEN
+    BEX3V := true;
+END_IF;
+IF tonKYPX4R.Q THEN
+    BEX4R := true;
+ELSIF tonKYPX4V.Q THEN
+    BEX4V := true;
+END_IF;
+IF tonKYPX5R.Q THEN
+    BEX5R := true;
+ELSIF tonKYPX5V.Q THEN
+    BEX5V := true;
+END_IF;
+
+EW[Addr + 1] := 16#FFFF;// KYPxxBER
+BD01E := A[Addr, 0];// KYP01EE
+
+END_FUNCTION_BLOCK
