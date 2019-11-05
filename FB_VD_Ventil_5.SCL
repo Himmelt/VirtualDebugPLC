@@ -47,15 +47,15 @@ VAR
 END_VAR
 
 VAR_OUTPUT
-  BEX1R : BOOL := false;
+  BEX1R : BOOL := true;
   BEX1V : BOOL := false;
-  BEX2R : BOOL := false;
+  BEX2R : BOOL := true;
   BEX2V : BOOL := false;
-  BEX3R : BOOL := false;
+  BEX3R : BOOL := true;
   BEX3V : BOOL := false;
-  BEX4R : BOOL := false;
+  BEX4R : BOOL := true;
   BEX4V : BOOL := false;
-  BEX5R : BOOL := false;
+  BEX5R : BOOL := true;
   BEX5V : BOOL := false;
   BD01E : BOOL := false;
 END_VAR
@@ -104,7 +104,7 @@ ELSIF tonKYPX1V.Q THEN
 END_IF;
 IF tonKYPX2R.Q THEN
     BEX2R := true;
-ELSIF tonKYPX1V.Q THEN
+ELSIF tonKYPX2V.Q THEN
     BEX2V := true;
 END_IF;
 IF tonKYPX3R.Q THEN
